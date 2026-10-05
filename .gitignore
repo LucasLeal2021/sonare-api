@@ -1,0 +1,10 @@
+# Dependências
+node_modules/
+
+# Estado local do Floci
+.floci-data/
+
+# Segredos
+.env
+.env.*
+!.env.example

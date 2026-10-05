@@ -1,0 +1,19 @@
+# Floci: emulador local da AWS (https://floci.io)
+# Subir:  docker compose up -d
+# Parar:  docker compose down
+services:
+  floci:
+    image: floci/floci:latest
+    ports:
+      - "4566:4566"                     # porta única onde todos os serviços AWS atendem
+    environment:
+      - FLOCI_HOSTNAME=floci            # outros containers (ex.: sonare-ia) acessam via http://floci:4566
+      - FLOCI_STORAGE_MODE=persistent   # buckets, tabelas e filas sobrevivem a reinícios
+      - FLOCI_STORAGE_PERSISTENT_PATH=/data
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # o Floci roda cada Lambda como um container Docker
+      - ./.floci-data:/data             # onde o estado da "AWS local" fica salvo
+
+networks:
+  default:
+    name: sonare-net                    # rede com nome fixo para o sonare-ia se conectar depois
