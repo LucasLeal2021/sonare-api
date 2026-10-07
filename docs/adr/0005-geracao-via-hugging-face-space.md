@@ -8,4 +8,4 @@ A Geração precisava de música com voz cantada e de custo zero. Rodar um model
 
 ## Por que foi substituída
 
-O protótipo (branch `prototipo/ace-step` do `sonare-ia`) mostrou que a cota gratuita de ZeroGPU cobre cerca de **uma** Geração por dia (cada pedido reserva 60 s de GPU), e que chamadas de fora do site eram recusadas sem mensagem de erro. Música com voz cantada de graça não sustenta nem a Cota diária de um único Artista, então o produto mudou para Narrações e Imagens (ADR 0011).
+Um protótipo descartável (já apagado) mostrou que a cota gratuita de ZeroGPU cobre cerca de **uma** Geração por dia — o site respondeu _"You have exceeded your free ZeroGPU quota (60s requested vs. 84s left)"_ — e que chamadas de fora do site eram recusadas sem mensagem de erro (`error: null`). Música com voz cantada de graça não sustenta nem a Cota diária de um único Artista, então o produto mudou para Narrações e Imagens (ADR 0011).
