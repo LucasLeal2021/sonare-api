@@ -1,0 +1,2 @@
+# Sempre LF: o código roda em containers Linux, e o Terraform/scripts não gostam de CRLF.
+* text=auto eol=lf
