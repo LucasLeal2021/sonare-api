@@ -12,7 +12,7 @@ A Sonare gera dois tipos de Criação, ambos de graça e com folga diária. A Na
 ## Consequences
 
 - O Kokoro gera ~2,3× mais rápido que o tempo real (1.000 caracteres ≈ 25 s); com o worker processando uma Geração por vez, Narrações longas formam fila.
-- O Kokoro roda em Python, e o worker é TypeScript: a forma de integração entre os dois ainda precisa ser decidida.
+- O Kokoro roda em Python (o `kokoro-js` para Node só tem vozes em inglês), e o worker é TypeScript: o worker chama um script Python curto como ferramenta de linha de comando a cada Narração, do mesmo jeito que chama o `ffmpeg`. Isso custa ~1,2 s de carregamento do modelo por Narração; se pesar, o script vira um processo local sempre ligado, sem mudar a interface `GeradorDeNarracao`.
 - A cota da Cloudflare é **compartilhada por todos os Artistas**; por isso a Cota diária é separada por tipo (Imagem tem cota menor que Narração).
 - A ADR 0002 restringe os **serviços AWS** aos que o Floci emula; a Cloudflare é um provedor externo chamado pela internet, e a chave dela fica no Secrets Manager.
 - Cada gerador fica atrás de uma interface (`GeradorDeNarracao`, `GeradorDeImagem`) com implementação falsa para testes.

@@ -4,6 +4,12 @@ node_modules/
 # Estado local do Floci
 .floci-data/
 
+# Terraform: plugins baixados, planos e qualquer state local (o state fica no S3, ADR 0008)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
 # Segredos
 .env
 .env.*
