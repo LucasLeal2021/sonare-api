@@ -10,8 +10,9 @@ services:
       - FLOCI_HOSTNAME=floci            # outros containers (ex.: sonare-ia) acessam via http://floci:4566
       - FLOCI_STORAGE_MODE=persistent   # buckets, tabelas e filas sobrevivem a reinícios
       - FLOCI_STORAGE_PERSISTENT_PATH=/data
+      - FLOCI_SERVICES_DOCDB_DOCKER_NETWORK=sonare-net  # o MongoDB de cada cluster DocumentDB nasce nesta rede
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock   # o Floci roda cada Lambda como um container Docker
+      - /var/run/docker.sock:/var/run/docker.sock   # o Floci roda Lambdas, EC2 e bancos como containers Docker
       - ./.floci-data:/data             # onde o estado da "AWS local" fica salvo
 
 networks:
