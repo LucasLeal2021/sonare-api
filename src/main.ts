@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { construirApp } from "./app";
-import { criarAssinadorS3 } from "./aws/assinadorS3";
+import { criarAssinadorS3, criarRemovedorS3 } from "./aws/assinadorS3";
 import { conectarDocumentDB } from "./aws/conexaoDocumentDB";
 import { criarFilaSQS } from "./aws/filaSQS";
 import { criarRepositorioMongo } from "./aws/repositorioMongo";
@@ -13,6 +13,7 @@ const app = construirApp({
   repositorio,
   fila: criarFilaSQS(config),
   assinador: criarAssinadorS3(config),
+  arquivos: criarRemovedorS3(config),
   gerarId: randomUUID,
 });
 

@@ -24,6 +24,8 @@ export async function conectarDocumentDB(config: Config) {
 
   // Na AWS real o DocumentDB exige também tls=true, replicaSet=rs0 e retryWrites=false;
   // o Floci não implementa TLS (ADR 0002: diferenças registradas).
-  const url = `mongodb://${encodeURIComponent(usuario)}:${encodeURIComponent(senha)}@${host}:${Port}/sonare?authSource=admin`;
+  // Os testes de integração usam outro banco (DOCUMENTDB_BANCO=sonare-testes) para não sujar a Biblioteca
+  const banco = process.env.DOCUMENTDB_BANCO ?? "sonare";
+  const url = `mongodb://${encodeURIComponent(usuario)}:${encodeURIComponent(senha)}@${host}:${Port}/${banco}?authSource=admin`;
   return mongoose.createConnection(url, { serverSelectionTimeoutMS: 5_000 }).asPromise();
 }

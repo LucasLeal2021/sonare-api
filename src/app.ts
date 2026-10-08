@@ -1,38 +1,57 @@
 import Fastify from "fastify";
-import { lerPedidoDeNarracao } from "./pedidoDeNarracao";
-import type { AssinadorDeAudio, Criacao, FilaDeGeracoes, RepositorioDeCriacoes } from "./portas";
+import { lerPedido } from "./pedidos";
+import type {
+  AssinadorDeArquivos,
+  Criacao,
+  FilaDeGeracoes,
+  RemovedorDeArquivos,
+  RepositorioDeCriacoes,
+  TipoDeCriacao,
+} from "./portas";
 
 export type Dependencias = {
   repositorio: RepositorioDeCriacoes;
   fila: FilaDeGeracoes;
-  assinador: AssinadorDeAudio;
+  assinador: AssinadorDeArquivos;
+  arquivos: RemovedorDeArquivos;
   gerarId: () => string;
 };
+
+const POR_PAGINA = 20;
+
+/** "Um farol solitário, numa falésia!" → "um-farol-solitario-numa-falesia" (até 6 palavras). */
+function nomeDeArquivo(criacao: Criacao) {
+  const base = criacao.tipo === "narracao" ? criacao.texto : criacao.descricao;
+  const palavras = base
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // tira os acentos
+    .toLowerCase()
+    .match(/[a-z0-9]+/g);
+  return palavras?.slice(0, 6).join("-") || criacao.criacaoId;
+}
 
 export function construirApp(deps: Dependencias) {
   const app = Fastify();
 
   app.post("/criacoes", async (requisicao, resposta) => {
-    const pedido = lerPedidoDeNarracao(requisicao.body);
+    const pedido = lerPedido(requisicao.body);
     if ("erro" in pedido) return resposta.code(400).send({ erro: pedido.erro });
 
-    const { texto, voz } = pedido;
     const criacaoId = deps.gerarId();
-
-    await deps.repositorio.criar({ criacaoId, tipo: "narracao", texto, voz, status: "na-fila" });
-    await deps.fila.publicar({ versao: 1, criacaoId, tipo: "narracao", texto, voz });
+    await deps.repositorio.criar({ criacaoId, status: "na-fila", ...pedido });
+    await deps.fila.publicar({ versao: 1, criacaoId, ...pedido });
 
     return resposta.code(201).send({ criacaoId, status: "na-fila" });
   });
 
-  // A Biblioteca: da mais nova para a mais antiga, POR_PAGINA de cada vez (Q22)
+  // A Biblioteca: da mais nova para a mais antiga, POR_PAGINA de cada vez (Q22), opcionalmente de um tipo só
   app.get("/criacoes", async (requisicao) => {
-    const { depoisDe } = requisicao.query as { depoisDe?: string };
+    const { depoisDe, tipo } = requisicao.query as { depoisDe?: string; tipo?: TipoDeCriacao };
     // Pede uma a mais só para saber se existe próxima página
-    const encontradas = await deps.repositorio.listar({ limite: POR_PAGINA + 1, depoisDe });
+    const encontradas = await deps.repositorio.listar({ limite: POR_PAGINA + 1, depoisDe, tipo });
     const pagina = encontradas.slice(0, POR_PAGINA);
     return {
-      criacoes: await Promise.all(pagina.map(comLinkDoAudio)),
+      criacoes: await Promise.all(pagina.map(comLinks)),
       proximaPagina: encontradas.length > POR_PAGINA ? pagina.at(-1)!.criacaoId : undefined,
     };
   });
@@ -41,15 +60,41 @@ export function construirApp(deps: Dependencias) {
     const { id } = requisicao.params as { id: string };
     const criacao = await deps.repositorio.buscar(id);
     if (!criacao) return resposta.code(404).send({ erro: "Criação não encontrada." });
-    return comLinkDoAudio(criacao);
+    return comLinks(criacao);
   });
 
-  async function comLinkDoAudio(criacao: Criacao) {
-    if (!criacao.chaveAudio) return criacao;
-    return { ...criacao, urlAudio: await deps.assinador.urlParaOuvir(criacao.chaveAudio) };
+  // Apagar é definitivo (Q19): o arquivo no bucket e o registro. Só depois que a Geração terminou,
+  // porque o worker ainda pode estar trabalhando numa Criação na fila. Não gera Devolução da Cota.
+  app.delete("/criacoes/:id", async (requisicao, resposta) => {
+    const { id } = requisicao.params as { id: string };
+    const criacao = await deps.repositorio.buscar(id);
+    if (!criacao) return resposta.code(404).send({ erro: "Criação não encontrada." });
+    if (criacao.status === "na-fila") return resposta.code(409).send({ erro: "Espere a Criação terminar para apagá-la." });
+
+    // Primeiro o arquivo: se isso falhar, o registro continua e dá para tentar de novo
+    const chave = criacao.tipo === "narracao" ? criacao.chaveAudio : criacao.chaveImagem;
+    if (chave) await deps.arquivos.apagar(chave);
+    await deps.repositorio.apagar(id);
+    return resposta.code(204).send();
+  });
+
+  // Acrescenta os links temporários: um para ouvir o Áudio / ver a Imagem, outro para baixar o arquivo
+  async function comLinks(criacao: Criacao) {
+    const link = (chave: string, extensao: string) =>
+      Promise.all([
+        deps.assinador.urlParaBaixar(chave),
+        deps.assinador.urlParaBaixar(chave, { baixarComo: `sonare-${nomeDeArquivo(criacao)}.${extensao}` }),
+      ]);
+    if (criacao.tipo === "narracao" && criacao.chaveAudio) {
+      const [urlAudio, urlDownload] = await link(criacao.chaveAudio, "mp3");
+      return { ...criacao, urlAudio, urlDownload };
+    }
+    if (criacao.tipo === "imagem" && criacao.chaveImagem) {
+      const [urlImagem, urlDownload] = await link(criacao.chaveImagem, "jpg");
+      return { ...criacao, urlImagem, urlDownload };
+    }
+    return criacao;
   }
 
   return app;
 }
-
-const POR_PAGINA = 20;

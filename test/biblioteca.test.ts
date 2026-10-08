@@ -10,7 +10,7 @@ async function preparar(quantas: number) {
     await app.inject({ method: "POST", url: "/criacoes", payload: { tipo: "narracao", texto: `Texto ${i}`, voz: "pf_dora" } });
   }
   const listar = async (url = "/criacoes") => (await app.inject({ method: "GET", url })).json();
-  return { fakes, listar };
+  return { fakes, listar, app };
 }
 
 const ids = (pagina: { criacoes: { criacaoId: string }[] }) => pagina.criacoes.map((c) => c.criacaoId);
@@ -29,7 +29,15 @@ describe("GET /criacoes (Biblioteca)", () => {
 
     const [criacao] = (await listar()).criacoes;
 
-    expect(criacao).toMatchObject({ status: "pronta", urlAudio: "https://audio.falso/narracoes/c-1.mp3" });
+    expect(criacao).toMatchObject({ status: "pronta", urlAudio: "https://arquivo.falso/narracoes/c-1.mp3" });
+  });
+
+  it("filtra por tipo: ?tipo=imagem lista só as Imagens", async () => {
+    const { listar, app } = await preparar(2);
+    await app.inject({ method: "POST", url: "/criacoes", payload: { tipo: "imagem", descricao: "um farol" } });
+
+    expect(ids(await listar("/criacoes?tipo=imagem"))).toEqual(["c-3"]);
+    expect(ids(await listar("/criacoes?tipo=narracao"))).toEqual(["c-2", "c-1"]);
   });
 
   it("mostra 20 por página e indica onde continuar para carregar mais", async () => {

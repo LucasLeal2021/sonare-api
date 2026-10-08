@@ -7,12 +7,12 @@ import type { RepositorioDeCriacoes } from "./portas";
  */
 export async function processarAviso(corpo: string, deps: { repositorio: RepositorioDeCriacoes }) {
   const evento = JSON.parse(corpo);
-  const { criacaoId, chaveAudio, motivo } = evento.detail ?? {};
+  const { criacaoId, chaveAudio, chaveImagem, prompt, motivo, definitiva } = evento.detail ?? {};
 
   switch (evento["detail-type"]) {
     case "CriacaoConcluida":
-      return deps.repositorio.marcarPronta(criacaoId, chaveAudio);
+      return deps.repositorio.marcarPronta(criacaoId, chaveImagem ? { chaveImagem, prompt } : { chaveAudio });
     case "CriacaoFalhou":
-      return deps.repositorio.marcarFalhou(criacaoId, motivo);
+      return deps.repositorio.marcarFalhou(criacaoId, motivo, { definitiva: definitiva === true });
   }
 }

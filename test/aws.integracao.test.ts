@@ -22,7 +22,7 @@ describe("repositório de Criações no DocumentDB (Floci)", () => {
     const criacaoId = `teste-${randomUUID()}`;
 
     await repositorio.criar({ criacaoId, tipo: "narracao", texto: "Olá!", voz: "pm_santa", status: "na-fila" });
-    await repositorio.marcarPronta(criacaoId, `narracoes/${criacaoId}.mp3`);
+    await repositorio.marcarPronta(criacaoId, { chaveAudio: `narracoes/${criacaoId}.mp3` });
 
     expect(await repositorio.buscar(criacaoId)).toEqual({
       criacaoId,
@@ -33,6 +33,46 @@ describe("repositório de Criações no DocumentDB (Floci)", () => {
       chaveAudio: `narracoes/${criacaoId}.mp3`,
       motivo: undefined,
     });
+  });
+
+  it("uma Imagem guardada volta com a Descrição, o Prompt e o local do arquivo, e o filtro por tipo a encontra", async () => {
+    const repositorio = criarRepositorioMongo(conexao);
+    const criacaoId = `teste-${randomUUID()}`;
+
+    await repositorio.criar({ criacaoId, tipo: "imagem", descricao: "um farol", status: "na-fila" });
+    await repositorio.marcarPronta(criacaoId, { chaveImagem: `imagens/${criacaoId}.jpg`, prompt: "a lighthouse" });
+
+    expect(await repositorio.buscar(criacaoId)).toEqual({
+      criacaoId,
+      tipo: "imagem",
+      descricao: "um farol",
+      status: "pronta",
+      chaveImagem: `imagens/${criacaoId}.jpg`,
+      prompt: "a lighthouse",
+      motivo: undefined,
+    });
+    const [maisNovaImagem] = await repositorio.listar({ limite: 1, tipo: "imagem" });
+    expect(maisNovaImagem.criacaoId).toBe(criacaoId);
+  });
+
+  it("uma recusa definitiva fica guardada como recusa, com o motivo", async () => {
+    const repositorio = criarRepositorioMongo(conexao);
+    const criacaoId = `teste-${randomUUID()}`;
+    await repositorio.criar({ criacaoId, tipo: "imagem", descricao: "algo proibido", status: "na-fila" });
+
+    await repositorio.marcarFalhou(criacaoId, "recusada pelo filtro", { definitiva: true });
+
+    expect(await repositorio.buscar(criacaoId)).toMatchObject({ status: "falhou", motivo: "recusada pelo filtro", recusada: true });
+  });
+
+  it("uma Criação apagada não é mais encontrada", async () => {
+    const repositorio = criarRepositorioMongo(conexao);
+    const criacaoId = `teste-${randomUUID()}`;
+    await repositorio.criar({ criacaoId, tipo: "imagem", descricao: "um farol", status: "falhou" });
+
+    await repositorio.apagar(criacaoId);
+
+    expect(await repositorio.buscar(criacaoId)).toBeNull();
   });
 
   it("buscar uma Criação que não existe devolve null", async () => {

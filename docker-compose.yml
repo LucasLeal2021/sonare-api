@@ -54,7 +54,7 @@ services:
         condition: service_healthy
       religar-documentdb:
         condition: service_completed_successfully
-    command: npm run dev                # tsx watch: reinicia sozinho quando você salva um arquivo
+    command: npm run dev                # nodemon --legacy-watch: confere os arquivos a cada segundo e reinicia ao salvar
 
 networks:
   default:

@@ -37,6 +37,33 @@ describe("POST /criacoes", () => {
   });
 });
 
+describe("POST /criacoes (Imagem)", () => {
+  const imagem = { tipo: "imagem", descricao: "um farol solitário numa falésia ao entardecer" };
+
+  it("uma Imagem válida é aceita na fila e a mensagem certa vai para o worker", async () => {
+    const { app, fakes } = preparar();
+
+    const resposta = await app.inject({ method: "POST", url: "/criacoes", payload: imagem });
+
+    expect(resposta.statusCode).toBe(201);
+    expect(fakes.fila.publicadas).toEqual([{ versao: 1, criacaoId: "c-1", tipo: "imagem", descricao: imagem.descricao }]);
+  });
+
+  it.each([
+    ["sem Descrição", { ...imagem, descricao: " " }, "Descreva a Imagem que você quer."],
+    ["Descrição longa demais", { ...imagem, descricao: "a".repeat(501) }, "A Descrição pode ter no máximo 500 caracteres."],
+    ["tipo desconhecido", { tipo: "video" }, "Escolha o tipo de Criação: narração ou imagem."],
+  ])("um pedido inválido (%s) é recusado em português e nada vai para a fila", async (_caso, corpo, erro) => {
+    const { app, fakes } = preparar();
+
+    const resposta = await app.inject({ method: "POST", url: "/criacoes", payload: corpo });
+
+    expect(resposta.statusCode).toBe(400);
+    expect(resposta.json()).toEqual({ erro });
+    expect(fakes.fila.publicadas).toEqual([]);
+  });
+});
+
 describe("GET /criacoes/:id", () => {
   it("uma Criação recém-pedida aparece na fila", async () => {
     const { app } = preparar();
