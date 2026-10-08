@@ -4,8 +4,12 @@ import mongoose from "mongoose";
 import type { Config } from "../config";
 
 /**
- * Conecta no DocumentDB: credenciais do Secrets Manager e endereço do DescribeDBClusters
- * (no Floci o endereço é o IP do container e pode mudar; nunca o guardamos).
+ * Conecta no DocumentDB: credenciais do Secrets Manager e endereço do DescribeDBClusters.
+ *
+ * DOCUMENTDB_HOST (só no ambiente local) passa por cima do endereço informado: o Floci informa
+ * o IP do container Mongo e não o atualiza quando o container reinicia com outro IP (ADR 0002).
+ * Na rede Docker, o NOME do container resolve sempre para o IP certo. Na AWS real a variável
+ * não existe e vale o endereço do DescribeDBClusters, que lá é um nome DNS estável.
  */
 export async function conectarDocumentDB(config: Config) {
   const segredo = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: config.documentdbSegredo }));
@@ -15,10 +19,11 @@ export async function conectarDocumentDB(config: Config) {
     new DescribeDBClustersCommand({ DBClusterIdentifier: config.documentdbCluster }),
   );
   const { Endpoint, Port } = DBClusters[0] ?? {};
-  if (!Endpoint) throw new Error(`cluster ${config.documentdbCluster} sem endereço — ele está "available"?`);
+  const host = process.env.DOCUMENTDB_HOST ?? Endpoint;
+  if (!host) throw new Error(`cluster ${config.documentdbCluster} sem endereço — ele está "available"?`);
 
   // Na AWS real o DocumentDB exige também tls=true, replicaSet=rs0 e retryWrites=false;
   // o Floci não implementa TLS (ADR 0002: diferenças registradas).
-  const url = `mongodb://${encodeURIComponent(usuario)}:${encodeURIComponent(senha)}@${Endpoint}:${Port}/sonare?authSource=admin`;
-  return mongoose.createConnection(url).asPromise();
+  const url = `mongodb://${encodeURIComponent(usuario)}:${encodeURIComponent(senha)}@${host}:${Port}/sonare?authSource=admin`;
+  return mongoose.createConnection(url, { serverSelectionTimeoutMS: 5_000 }).asPromise();
 }

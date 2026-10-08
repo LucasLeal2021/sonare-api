@@ -23,6 +23,14 @@ describe("avisos do worker", () => {
     expect(await consultar()).toMatchObject({ status: "pronta", chaveAudio: "narracoes/c-1.mp3" });
   });
 
+  it("uma Criação pronta traz uma URL para ouvir o Áudio", async () => {
+    const { fakes, consultar } = await criacaoNaFila();
+
+    await processarAviso(aviso("CriacaoConcluida", { criacaoId: "c-1", chaveAudio: "narracoes/c-1.mp3" }), fakes);
+
+    expect(await consultar()).toMatchObject({ urlAudio: "https://audio.falso/narracoes/c-1.mp3" });
+  });
+
   it("CriacaoFalhou deixa a Criação falhou, com o motivo", async () => {
     const { fakes, consultar } = await criacaoNaFila();
 

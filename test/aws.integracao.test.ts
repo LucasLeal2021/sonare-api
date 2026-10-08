@@ -1,5 +1,5 @@
 // Integração com o Floci: rodar dentro do container (npm run test:integracao).
-import { DeleteMessageCommand, ReceiveMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { CreateQueueCommand, DeleteQueueCommand, ReceiveMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { randomUUID } from "node:crypto";
 import type { Connection } from "mongoose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -41,23 +41,21 @@ describe("repositório de Criações no DocumentDB (Floci)", () => {
 });
 
 describe("fila de Gerações (Floci)", () => {
-  it("a mensagem publicada chega na fila que o worker lê", async () => {
-    const criacaoId = `teste-${randomUUID()}`;
-    const mensagem = { versao: 1 as const, criacaoId, tipo: "narracao" as const, texto: "Olá!", voz: "pf_dora" };
+  // Uma fila só deste teste: na fila real, o worker (se estiver ligado) pegaria a mensagem primeiro
+  const sqs = new SQSClient({});
+  let filaDoTeste: string;
+  beforeAll(async () => {
+    const { QueueUrl } = await sqs.send(new CreateQueueCommand({ QueueName: `sonare-teste-${randomUUID()}` }));
+    filaDoTeste = QueueUrl!;
+  });
+  afterAll(() => sqs.send(new DeleteQueueCommand({ QueueUrl: filaDoTeste })));
 
-    await criarFilaSQS(config).publicar(mensagem);
+  it("a mensagem publicada chega na fila no formato que o worker espera", async () => {
+    const mensagem = { versao: 1 as const, criacaoId: "c-1", tipo: "narracao" as const, texto: "Olá!", voz: "pf_dora" };
 
-    const sqs = new SQSClient({});
-    for (let i = 0; i < 5; i++) {
-      const { Messages = [] } = await sqs.send(
-        new ReceiveMessageCommand({ QueueUrl: config.filaGeracoesUrl, MaxNumberOfMessages: 10, WaitTimeSeconds: 2 }),
-      );
-      const minha = Messages.find((m) => m.Body?.includes(criacaoId));
-      if (!minha) continue;
-      await sqs.send(new DeleteMessageCommand({ QueueUrl: config.filaGeracoesUrl, ReceiptHandle: minha.ReceiptHandle }));
-      expect(JSON.parse(minha.Body!)).toEqual(mensagem);
-      return;
-    }
-    throw new Error("a mensagem não chegou na fila de Gerações");
+    await criarFilaSQS({ ...config, filaGeracoesUrl: filaDoTeste }).publicar(mensagem);
+
+    const { Messages = [] } = await sqs.send(new ReceiveMessageCommand({ QueueUrl: filaDoTeste, WaitTimeSeconds: 5 }));
+    expect(Messages.map((m) => JSON.parse(m.Body!))).toEqual([mensagem]);
   });
 });

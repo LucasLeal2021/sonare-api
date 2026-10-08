@@ -1,5 +1,5 @@
 // Versões falsas das fronteiras da API (DocumentDB e fila de Gerações), para os testes rápidos.
-import type { Criacao, FilaDeGeracoes, MensagemDeGeracao, RepositorioDeCriacoes } from "../src/portas";
+import type { AssinadorDeAudio, Criacao, FilaDeGeracoes, MensagemDeGeracao, RepositorioDeCriacoes } from "../src/portas";
 
 export function criarFakes() {
   const criacoes = new Map<string, Criacao>();
@@ -32,5 +32,11 @@ export function criarFakes() {
   let proximo = 0;
   const gerarId = () => `c-${++proximo}`;
 
-  return { repositorio, fila, gerarId };
+  const assinador: AssinadorDeAudio = {
+    async urlParaOuvir(chaveAudio) {
+      return `https://audio.falso/${chaveAudio}`;
+    },
+  };
+
+  return { repositorio, fila, gerarId, assinador };
 }

@@ -1,8 +1,11 @@
-# Floci (emulador local da AWS, https://floci.io) + a API da Sonare em desenvolvimento.
-# Subir tudo:   docker compose up -d --build
-# Só o Floci:   docker compose up -d floci
+# Floci (emulador local da AWS, https://floci.io) + o Mongo do DocumentDB + a API da Sonare.
+#
+# Dia a dia:    docker compose up          (deixe rodando; mostra os logs; Ctrl+C para parar)
+# Em 2º plano:  docker compose up -d       (e depois: docker compose logs -f api)
 # Testes:       docker compose run --rm api npm run test:integracao
-# Parar:        docker compose down
+# Parar tudo:   docker compose down
+# Instalou uma dependência nova? docker compose up --build -V
+#   (o -V descarta o node_modules antigo do container; sem ele, o pacote novo "não existe")
 services:
   floci:
     image: floci/floci:latest
@@ -17,6 +20,17 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock   # o Floci roda Lambdas, EC2 e bancos como containers Docker
       - ./.floci-data:/data             # onde o estado da "AWS local" fica salvo
 
+  # O Floci não religa sozinho o container Mongo que ele criou para o DocumentDB (ADR 0002).
+  # Este ajudante liga o Mongo assim que o Floci fica pronto, e termina.
+  religar-documentdb:
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      floci:
+        condition: service_healthy
+    command: ["sh", "-c", "docker start floci-docdb-sonare-local-criacoes || echo 'Mongo ainda não existe: rode o terraform apply do infra/base'"]
+
   api:
     build: .
     ports:
@@ -29,11 +43,18 @@ services:
       PORTA: 3333
       AWS_REGION: us-east-1
       AWS_ENDPOINT_URL: http://floci:4566
+      S3_ENDPOINT_PUBLICO: http://localhost:4566   # endereço do S3 que o NAVEGADOR enxerga (links do Áudio)
+      # O Floci cria o Mongo do DocumentDB como "floci-docdb-<cluster>"; pelo nome, o Docker sempre
+      # acha o IP certo (o IP que o Floci informa fica velho quando o container reinicia — ADR 0002)
+      DOCUMENTDB_HOST: floci-docdb-sonare-local-criacoes
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
     depends_on:
-      - floci
-    command: npm run dev
+      floci:
+        condition: service_healthy
+      religar-documentdb:
+        condition: service_completed_successfully
+    command: npm run dev                # tsx watch: reinicia sozinho quando você salva um arquivo
 
 networks:
   default:

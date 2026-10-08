@@ -1,10 +1,11 @@
 import Fastify from "fastify";
 import { lerPedidoDeNarracao } from "./pedidoDeNarracao";
-import type { FilaDeGeracoes, RepositorioDeCriacoes } from "./portas";
+import type { AssinadorDeAudio, FilaDeGeracoes, RepositorioDeCriacoes } from "./portas";
 
 export type Dependencias = {
   repositorio: RepositorioDeCriacoes;
   fila: FilaDeGeracoes;
+  assinador: AssinadorDeAudio;
   gerarId: () => string;
 };
 
@@ -28,7 +29,8 @@ export function construirApp(deps: Dependencias) {
     const { id } = requisicao.params as { id: string };
     const criacao = await deps.repositorio.buscar(id);
     if (!criacao) return resposta.code(404).send({ erro: "Criação não encontrada." });
-    return criacao;
+    if (!criacao.chaveAudio) return criacao;
+    return { ...criacao, urlAudio: await deps.assinador.urlParaOuvir(criacao.chaveAudio) };
   });
 
   return app;

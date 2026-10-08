@@ -26,3 +26,8 @@ export type MensagemDeGeracao = { versao: 1; criacaoId: string; tipo: "narracao"
 export interface FilaDeGeracoes {
   publicar(mensagem: MensagemDeGeracao): Promise<void>;
 }
+
+export interface AssinadorDeAudio {
+  /** Um link temporário para o navegador baixar o Áudio direto do bucket privado. */
+  urlParaOuvir(chaveAudio: string): Promise<string>;
+}

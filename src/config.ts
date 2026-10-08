@@ -1,6 +1,7 @@
 import { GetParametersByPathCommand, SSMClient } from "@aws-sdk/client-ssm";
 
 export type Config = {
+  bucketCriacoes: string;
   filaGeracoesUrl: string;
   filaCriacoesConcluidasUrl: string;
   documentdbSegredo: string;
@@ -20,6 +21,7 @@ export async function carregarConfig(ambiente = process.env.AMBIENTE ?? "local")
   };
 
   return {
+    bucketCriacoes: ler("s3/bucket-criacoes"),
     filaGeracoesUrl: ler("sqs/geracoes-url"),
     filaCriacoesConcluidasUrl: ler("sqs/criacoes-concluidas-url"),
     documentdbSegredo: ler("documentdb/segredo"),
