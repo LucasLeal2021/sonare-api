@@ -1,6 +1,8 @@
-# Floci: emulador local da AWS (https://floci.io)
-# Subir:  docker compose up -d
-# Parar:  docker compose down
+# Floci (emulador local da AWS, https://floci.io) + a API da Sonare em desenvolvimento.
+# Subir tudo:   docker compose up -d --build
+# Só o Floci:   docker compose up -d floci
+# Testes:       docker compose run --rm api npm run test:integracao
+# Parar:        docker compose down
 services:
   floci:
     image: floci/floci:latest
@@ -15,6 +17,24 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock   # o Floci roda Lambdas, EC2 e bancos como containers Docker
       - ./.floci-data:/data             # onde o estado da "AWS local" fica salvo
 
+  api:
+    build: .
+    ports:
+      - "3333:3333"                     # o navegador e o curl acessam http://localhost:3333
+    volumes:
+      - .:/app                          # seu código, editado no Windows, visto pelo container
+      - /app/node_modules               # mas as dependências são as do Linux, instaladas na imagem
+    environment:
+      AMBIENTE: local
+      PORTA: 3333
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://floci:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    depends_on:
+      - floci
+    command: npm run dev
+
 networks:
   default:
-    name: sonare-net                    # rede com nome fixo para o sonare-ia se conectar depois
+    name: sonare-net                    # rede com nome fixo para o sonare-ia se conectar

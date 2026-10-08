@@ -1,0 +1,30 @@
+{
+  "name": "sonare-api",
+  "private": true,
+  "description": "API da Sonare: recebe pedidos de Criação, guarda no DocumentDB e coloca na fila de Gerações",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integracao": "vitest run --config vitest.integracao.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-docdb": "^3.1147.0",
+    "@aws-sdk/client-secrets-manager": "^3.1147.0",
+    "@aws-sdk/client-sqs": "^3.1147.0",
+    "@aws-sdk/client-ssm": "^3.1147.0",
+    "fastify": "^5.12.5",
+    "mongoose": "^9.11.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}

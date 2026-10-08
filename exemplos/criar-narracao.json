@@ -1,0 +1,5 @@
+{
+  "tipo": "narracao",
+  "texto": "Olá! Esta Narração saiu da API da Sonare, passou pela fila, foi gerada pelo worker e voltou como aviso. Tudo no Floci.",
+  "voz": "pm_santa"
+}
