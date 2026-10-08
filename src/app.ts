@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import { lerPedidoDeNarracao } from "./pedidoDeNarracao";
-import type { AssinadorDeAudio, FilaDeGeracoes, RepositorioDeCriacoes } from "./portas";
+import type { AssinadorDeAudio, Criacao, FilaDeGeracoes, RepositorioDeCriacoes } from "./portas";
 
 export type Dependencias = {
   repositorio: RepositorioDeCriacoes;
@@ -25,13 +25,31 @@ export function construirApp(deps: Dependencias) {
     return resposta.code(201).send({ criacaoId, status: "na-fila" });
   });
 
+  // A Biblioteca: da mais nova para a mais antiga, POR_PAGINA de cada vez (Q22)
+  app.get("/criacoes", async (requisicao) => {
+    const { depoisDe } = requisicao.query as { depoisDe?: string };
+    // Pede uma a mais só para saber se existe próxima página
+    const encontradas = await deps.repositorio.listar({ limite: POR_PAGINA + 1, depoisDe });
+    const pagina = encontradas.slice(0, POR_PAGINA);
+    return {
+      criacoes: await Promise.all(pagina.map(comLinkDoAudio)),
+      proximaPagina: encontradas.length > POR_PAGINA ? pagina.at(-1)!.criacaoId : undefined,
+    };
+  });
+
   app.get("/criacoes/:id", async (requisicao, resposta) => {
     const { id } = requisicao.params as { id: string };
     const criacao = await deps.repositorio.buscar(id);
     if (!criacao) return resposta.code(404).send({ erro: "Criação não encontrada." });
+    return comLinkDoAudio(criacao);
+  });
+
+  async function comLinkDoAudio(criacao: Criacao) {
     if (!criacao.chaveAudio) return criacao;
     return { ...criacao, urlAudio: await deps.assinador.urlParaOuvir(criacao.chaveAudio) };
-  });
+  }
 
   return app;
 }
+
+const POR_PAGINA = 20;

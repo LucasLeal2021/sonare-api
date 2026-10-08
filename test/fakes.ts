@@ -12,6 +12,11 @@ export function criarFakes() {
     async buscar(criacaoId) {
       return criacoes.get(criacaoId) ?? null;
     },
+    async listar({ limite, depoisDe }) {
+      const maisNovasPrimeiro = [...criacoes.values()].reverse(); // o Map guarda na ordem de criação
+      const inicio = depoisDe ? maisNovasPrimeiro.findIndex((c) => c.criacaoId === depoisDe) + 1 : 0;
+      return maisNovasPrimeiro.slice(inicio, inicio + limite);
+    },
     async marcarPronta(criacaoId, chaveAudio) {
       const c = criacoes.get(criacaoId);
       if (c) criacoes.set(criacaoId, { ...c, status: "pronta", chaveAudio });

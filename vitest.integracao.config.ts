@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     include: ["test/**/*.integracao.test.ts"],
     testTimeout: 60_000,
+    hookTimeout: 60_000, // o beforeAll conecta no DocumentDB, que pode demorar alguns segundos
     fileParallelism: false,
   },
 });

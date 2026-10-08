@@ -16,6 +16,8 @@ export type Criacao = {
 export interface RepositorioDeCriacoes {
   criar(criacao: Criacao): Promise<void>;
   buscar(criacaoId: string): Promise<Criacao | null>;
+  /** Da mais nova para a mais antiga; `depoisDe` é o criacaoId do último item da página anterior. */
+  listar(opcoes: { limite: number; depoisDe?: string }): Promise<Criacao[]>;
   marcarPronta(criacaoId: string, chaveAudio: string): Promise<void>;
   marcarFalhou(criacaoId: string, motivo: string): Promise<void>;
 }

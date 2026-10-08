@@ -38,6 +38,21 @@ describe("repositório de Criações no DocumentDB (Floci)", () => {
   it("buscar uma Criação que não existe devolve null", async () => {
     expect(await criarRepositorioMongo(conexao).buscar("nao-existe")).toBeNull();
   });
+
+  it("lista da mais nova para a mais antiga, uma página por vez", async () => {
+    const repositorio = criarRepositorioMongo(conexao);
+    const [a, b, c] = ["a", "b", "c"].map((letra) => `teste-${letra}-${randomUUID()}`);
+    for (const criacaoId of [a, b, c]) {
+      await repositorio.criar({ criacaoId, tipo: "narracao", texto: "Olá!", voz: "pf_dora", status: "na-fila" });
+      await new Promise((r) => setTimeout(r, 5)); // horários de criação diferentes
+    }
+
+    const primeira = await repositorio.listar({ limite: 2 });
+    const segunda = await repositorio.listar({ limite: 1, depoisDe: primeira[1].criacaoId });
+
+    expect(primeira.map((x) => x.criacaoId)).toEqual([c, b]);
+    expect(segunda.map((x) => x.criacaoId)).toEqual([a]);
+  });
 });
 
 describe("fila de Gerações (Floci)", () => {
